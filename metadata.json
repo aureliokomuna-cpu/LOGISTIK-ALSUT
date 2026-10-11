@@ -1,0 +1,6 @@
+{
+  "name": "Alsut Logistics - Sistem Serah Terima & Dispatch",
+  "description": "Aplikasi logistik ramah pengguna untuk serah terima barang, monitoring armada, verifikasi departemen oleh PS, notifikasi barang sampai otomatis, dan laporan harian PDF.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
