@@ -12,6 +12,7 @@ import {
   INITIAL_NOTIFICATIONS,
 } from './data/initialData';
 import { notificationService } from './utils/notification';
+import { systemSync, SyncMessage } from './utils/systemSync';
 import { Header } from './components/Header';
 import { LogisticsFieldView } from './components/LogisticsFieldView';
 import { ManagerDashboard } from './components/ManagerDashboard';
@@ -95,6 +96,60 @@ export default function App() {
     localStorage.setItem('alsut_active_officer', JSON.stringify(activeOfficer));
   }, [activeOfficer]);
 
+  // Unified System Synchronization across tabs, windows, and roles
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'alsut_logistics_activities_v2' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          setActivities(parsed);
+        } catch (err) {
+          console.warn('Storage sync parse error:', err);
+        }
+      }
+      if (e.key === 'alsut_logistics_notifications_v2' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          setNotifications(parsed);
+        } catch (err) {
+          console.warn('Notification storage sync error:', err);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    // BroadcastChannel sync listener
+    const unsubscribe = systemSync.subscribe((msg: SyncMessage) => {
+      if (msg.type === 'NEW_ACTIVITY') {
+        setActivities((prev) => {
+          if (prev.some((a) => a.id === msg.activity.id)) return prev;
+          return [msg.activity, ...prev];
+        });
+      } else if (msg.type === 'ACTIVITY_VERIFIED') {
+        setActivities((prev) =>
+          prev.map((act) =>
+            act.id === msg.activityId
+              ? { ...act, status: 'verified_by_ps', psVerification: msg.verification }
+              : act
+          )
+        );
+      } else if (msg.type === 'ACTIVITIES_UPDATED') {
+        setActivities(msg.activities);
+      } else if (msg.type === 'NEW_NOTIFICATION') {
+        setNotifications((prev) => {
+          if (prev.some((n) => n.id === msg.notification.id)) return prev;
+          return [msg.notification, ...prev];
+        });
+      }
+    });
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      unsubscribe();
+    };
+  }, []);
+
   // Request browser notification permission once
   useEffect(() => {
     notificationService.requestBrowserPermission();
@@ -141,6 +196,10 @@ export default function App() {
 
     setNotifications((prev) => [newNotif, ...prev]);
 
+    // Broadcast to unified system across all tabs & roles
+    systemSync.broadcast({ type: 'NEW_ACTIVITY', activity: newActivity });
+    systemSync.broadcast({ type: 'NEW_NOTIFICATION', notification: newNotif });
+
     // Trigger audible chime & browser notification
     notificationService.playArrivalChime();
     notificationService.sendBrowserNotification(notifTitle, notifMsg);
@@ -185,6 +244,11 @@ export default function App() {
     };
 
     setNotifications((prev) => [newNotif, ...prev]);
+
+    // Broadcast verification to unified system
+    systemSync.broadcast({ type: 'ACTIVITY_VERIFIED', activityId, verification });
+    systemSync.broadcast({ type: 'NEW_NOTIFICATION', notification: newNotif });
+
     notificationService.playSuccessBeep();
     setArrivalBanner(newNotif);
 

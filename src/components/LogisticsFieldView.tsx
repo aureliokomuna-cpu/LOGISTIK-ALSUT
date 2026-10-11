@@ -8,6 +8,12 @@ import {
   ActivityPhotos,
 } from '../types/logistics';
 import { DEPARTMENTS, DC_OPTIONS } from '../data/initialData';
+import {
+  GOOGLE_DRIVE_FOLDER_URL,
+  generateDriveFileName,
+  downloadPhotoWithDriveName,
+  formatTimestampForDrive,
+} from '../utils/driveUtils';
 import { CameraCaptureModal } from './CameraCaptureModal';
 import { SignatureModal } from './SignatureModal';
 import {
@@ -28,6 +34,11 @@ import {
   PenTool,
   Check,
   HelpCircle,
+  FolderUp,
+  ExternalLink,
+  Download,
+  Globe,
+  Radio,
 } from 'lucide-react';
 
 interface LogisticsFieldViewProps {
@@ -94,17 +105,19 @@ export const LogisticsFieldView: React.FC<LogisticsFieldViewProps> = ({
     'Prioritas Cepat',
   ];
 
-  // Filter for my activities
+  // Filter for activities and Unified System view
   const [filterMyDept, setFilterMyDept] = useState<string>('all');
+  const [filterDc, setFilterDc] = useState<string>('all');
+  const [systemViewScope, setSystemViewScope] = useState<'all' | 'mine'>('all');
 
   // Asal DC state (JABABEKA, CIKUPA, CIKANDE, STORE ALSUT, STORE LAIN)
   const [selectedDc, setSelectedDc] = useState<string>('JABABEKA');
   const [customDc, setCustomDc] = useState<string>('');
 
-  // Explicit Officer State for this task/activity (By Ketikan Langsung: 2 Kolom Nama & NIP, Tanpa Shift)
-  const [taskOfficerName, setTaskOfficerName] = useState<string>(activeOfficer.name);
-  const [taskOfficerNip, setTaskOfficerNip] = useState<string>(activeOfficer.badgeNumber);
-  const [taskOfficerId, setTaskOfficerId] = useState<string>(activeOfficer.id);
+  // Explicit Officer State for this task/activity (By Ketikan Langsung: Dikosongkan agar petugas isi sendiri tanpa ribet hapus)
+  const [taskOfficerName, setTaskOfficerName] = useState<string>('');
+  const [taskOfficerNip, setTaskOfficerNip] = useState<string>('');
+  const [taskOfficerId, setTaskOfficerId] = useState<string>('');
 
   const handleStartTask = (type: ActivityType) => {
     setActiveType(type);
@@ -112,27 +125,29 @@ export const LogisticsFieldView: React.FC<LogisticsFieldViewProps> = ({
     setPhotos({});
     setRecipientSignature(undefined);
     setNotes('');
-    setTaskOfficerName(activeOfficer.name);
-    setTaskOfficerNip(activeOfficer.badgeNumber);
-    setTaskOfficerId(activeOfficer.id);
+    
+    // Nama logistik kosongkan saja agar mereka yang isi sendiri langsung tanpa hapus teks
+    setTaskOfficerName('');
+    setTaskOfficerNip('');
+    setTaskOfficerId('');
     setSelectedDc('JABABEKA');
     setCustomDc('');
+
+    // Semua kolom isian menggunakan nilai bersih (placeholder akan memberi contoh tanpa harus dihapus)
+    setRecipientName('');
+    setRecipientPhone('');
+    setDestinationLocation('');
+    setItems([{ id: '1', name: '', qty: 1, unit: 'Unit', notes: '' }]);
 
     if (type === 'barang_masuk') {
       setTitle('Penerimaan Barang Masuk');
       setTargetDepartment(DEPARTMENTS[0]); // 'Sofa & Chair'
-      setItems([{ id: '1', name: 'Barang Kiriman Supplier', qty: 1, unit: 'Koli' }]);
     } else if (type === 'barang_keluar') {
       setTitle('Pengiriman Dispatch Customer');
       setTargetDepartment(DEPARTMENTS[8]); // 'Dining'
-      setRecipientName('');
-      setDestinationLocation('Alam Sutera');
-      setItems([{ id: '1', name: 'Pesanan Customer', qty: 1, unit: 'Unit' }]);
     } else {
       setTitle('Serah Terima Internal Departemen');
       setTargetDepartment(DEPARTMENTS[0]); // 'Sofa & Chair'
-      setRecipientName('Perwakilan Departemen');
-      setItems([{ id: '1', name: 'Dokumen / Perlengkapan Departemen', qty: 1, unit: 'Pcs' }]);
     }
   };
 
@@ -225,10 +240,26 @@ export const LogisticsFieldView: React.FC<LogisticsFieldViewProps> = ({
     setActiveType(null);
   };
 
-  // Filter officer's own activities
-  const myActivities = recentActivities
-    .filter((a) => a.officerName === activeOfficer.name || a.officerId === activeOfficer.id)
-    .filter((a) => filterMyDept === 'all' || a.targetDepartment === filterMyDept);
+  // Filter activities: Unified System (Semua Input Terhubung dalam Satu Sistem) or Officer's own
+  const displayedActivities = recentActivities
+    .filter((a) => {
+      if (systemViewScope === 'mine') {
+        const myName = (taskOfficerName || activeOfficer.name).trim().toLowerCase();
+        return (
+          a.officerName.toLowerCase().includes(myName) ||
+          a.officerId === activeOfficer.id
+        );
+      }
+      return true; // Default 'all': Semua terhubung dalam satu sistem terpadu
+    })
+    .filter((a) => (filterMyDept === 'all' ? true : a.targetDepartment === filterMyDept))
+    .filter((a) => (filterDc === 'all' ? true : a.dcOrigin === filterDc));
+
+  const myActivities = recentActivities.filter(
+    (a) =>
+      a.officerName.toLowerCase() === activeOfficer.name.toLowerCase() ||
+      a.officerId === activeOfficer.id
+  );
 
   return (
     <div className="max-w-5xl mx-auto px-2.5 sm:px-4 py-2 sm:py-5 space-y-2.5 sm:space-y-4">
@@ -462,7 +493,7 @@ export const LogisticsFieldView: React.FC<LogisticsFieldViewProps> = ({
             <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-2.5 sm:space-y-3.5">
               {currentStep === 1 ? (
                 <>
-                  {/* SEKSI PENGISIAN PETUGAS LOGISTIK (HANYA 2 KOLOM KETIKAN: NAMA & NIP, TANPA SHIFT) */}
+                  {/* SEKSI PENGISIAN PETUGAS LOGISTIK (HANYA 2 KOLOM KETIKAN: NAMA & NIP, TANPA SHIFT, KOSONGKAN AWAL) */}
                   <div className="bg-amber-50/80 border border-amber-300 rounded-xl p-2 sm:p-2.5 space-y-1.5">
                     <div className="flex items-center justify-between">
                       <label className="text-[10px] sm:text-xs font-black text-slate-900 flex items-center gap-1.5 uppercase tracking-wide">
@@ -470,34 +501,34 @@ export const LogisticsFieldView: React.FC<LogisticsFieldViewProps> = ({
                         PENGISIAN PETUGAS LOGISTIK (KETIK NAMA & NIP):
                       </label>
                       <span className="text-[9px] font-extrabold bg-amber-200 text-amber-900 px-1.5 py-0.2 rounded">
-                        2 Kolom Ketikan
+                        2 Kolom Bersih
                       </span>
                     </div>
 
                     {/* 2 Kolom Berdampingan (Nama & NIP - Hemat Tempat di Layar HP) */}
                     <div className="grid grid-cols-2 gap-2">
-                      {/* Kolom 1: Nama Petugas (By Ketikan) */}
+                      {/* Kolom 1: Nama Petugas (By Ketikan - Kosong Langsung Ketik) */}
                       <div>
                         <label className="text-[10px] font-bold text-slate-700 block mb-0.5 truncate">
                           1. Nama Logistik:
                         </label>
                         <input
                           type="text"
-                          placeholder="Ketik nama lengkap..."
+                          placeholder="Contoh: Budi Santoso / Agus..."
                           value={taskOfficerName}
                           onChange={(e) => setTaskOfficerName(e.target.value)}
                           className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
                         />
                       </div>
 
-                      {/* Kolom 2: NIP Petugas (By Ketikan) */}
+                      {/* Kolom 2: NIP Petugas (By Ketikan - Kosong Langsung Ketik) */}
                       <div>
                         <label className="text-[10px] font-bold text-slate-700 block mb-0.5 truncate">
                           2. NIP Logistik:
                         </label>
                         <input
                           type="text"
-                          placeholder="Ketik NIP..."
+                          placeholder="Contoh: LOG-001..."
                           value={taskOfficerNip}
                           onChange={(e) => setTaskOfficerNip(e.target.value)}
                           className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs font-mono"
@@ -505,11 +536,26 @@ export const LogisticsFieldView: React.FC<LogisticsFieldViewProps> = ({
                       </div>
                     </div>
 
-                    {/* Stempel Tracking Preview */}
-                    <div className="flex items-center gap-1 text-[9px] sm:text-[10px] font-semibold text-slate-800 bg-white/90 px-2 py-0.5 rounded border border-amber-200 truncate">
-                      <span className="shrink-0">📌 Stempel Berita Acara:</span>
-                      <strong className="text-amber-900 truncate">{taskOfficerName || '(Ketik nama)'}</strong>
-                      <span className="font-mono text-slate-600 shrink-0">· NIP: {taskOfficerNip || '-'}</span>
+                    {/* Quick fill chip from profile (optional) & Stempel Tracking Preview */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pt-0.5">
+                      <div className="flex items-center gap-1 text-[9px] sm:text-[10px] font-semibold text-slate-800 bg-white/90 px-2 py-0.5 rounded border border-amber-200 truncate">
+                        <span className="shrink-0">📌 Stempel Berita Acara:</span>
+                        <strong className="text-amber-900 truncate">{taskOfficerName || '(Ketik nama Anda)'}</strong>
+                        <span className="font-mono text-slate-600 shrink-0">· NIP: {taskOfficerNip || '-'}</span>
+                      </div>
+
+                      {activeOfficer?.name && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTaskOfficerName(activeOfficer.name);
+                            setTaskOfficerNip(activeOfficer.badgeNumber);
+                          }}
+                          className="text-[9px] text-amber-800 hover:text-amber-950 hover:underline font-bold self-start sm:self-auto"
+                        >
+                          ⚡ Isi cepat profil ({activeOfficer.name})
+                        </button>
+                      )}
                     </div>
                   </div>
 

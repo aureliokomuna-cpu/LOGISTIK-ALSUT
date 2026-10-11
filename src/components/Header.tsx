@@ -1,6 +1,7 @@
 import React from 'react';
 import { UserRole, LogisticsOfficer, InAppNotification } from '../types/logistics';
-import { Truck, Bell, Volume2, VolumeX, ShieldCheck, User, Users, ClipboardCheck } from 'lucide-react';
+import { GOOGLE_DRIVE_FOLDER_URL } from '../utils/driveUtils';
+import { Truck, Bell, Volume2, VolumeX, ShieldCheck, User, Users, ClipboardCheck, FolderUp } from 'lucide-react';
 
 interface HeaderProps {
   currentRole: UserRole;
@@ -99,6 +100,18 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="hidden sm:inline">Tutorial</span>
               </button>
             )}
+
+            {/* Google Drive Folder Shortcut */}
+            <a
+              href={GOOGLE_DRIVE_FOLDER_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black transition-colors shadow-2xs"
+              title="Buka Folder Google Drive Bukti Foto Logistik Alsut"
+            >
+              <FolderUp className="w-3.5 h-3.5 text-blue-400" />
+              <span className="hidden sm:inline">Drive Foto</span>
+            </a>
 
             {/* Notification Bell */}
             <button
