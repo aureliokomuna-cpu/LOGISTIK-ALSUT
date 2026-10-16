@@ -68,6 +68,7 @@ export interface LogisticsActivity {
   // DC & Origin / Destination
   dcOrigin?: string;
   targetDepartment?: string;
+  targetDepartments?: string[];
   
   // Recipient / Customer details
   recipientName?: string;

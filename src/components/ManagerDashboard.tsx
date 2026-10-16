@@ -54,7 +54,11 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
   const filteredActivities = activities.filter((act) => {
     if (filterType !== 'all' && act.type !== filterType) return false;
     if (filterOfficer !== 'all' && act.officerName !== filterOfficer) return false;
-    if (filterDepartment !== 'all' && act.targetDepartment !== filterDepartment) return false;
+    if (filterDepartment !== 'all') {
+      const inArray = act.targetDepartments && act.targetDepartments.includes(filterDepartment);
+      const inStr = act.targetDepartment === filterDepartment || act.targetDepartment?.includes(filterDepartment);
+      if (!inArray && !inStr) return false;
+    }
     if (filterStatus === 'pending' && act.status !== 'pending_dept_check') return false;
     if (filterStatus === 'verified' && act.status !== 'verified_by_ps') return false;
     if (filterStatus === 'delivered' && act.status !== 'delivered_to_customer') return false;
@@ -63,7 +67,9 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
       const q = searchQuery.toLowerCase();
       const matchTracking = act.trackingCode.toLowerCase().includes(q);
       const matchOfficer = act.officerName.toLowerCase().includes(q);
-      const matchDept = act.targetDepartment?.toLowerCase().includes(q) || false;
+      const matchDept =
+        (act.targetDepartments && act.targetDepartments.some((d) => d.toLowerCase().includes(q))) ||
+        (act.targetDepartment?.toLowerCase().includes(q) || false);
       const matchRecipient = act.recipientName?.toLowerCase().includes(q) || false;
       const matchItem = act.items.some((it) => it.name.toLowerCase().includes(q));
       const matchFleet = act.fleetPlate?.toLowerCase().includes(q) || false;
@@ -85,7 +91,11 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
   // Group counts per department
   const departmentCounts: { [dept: string]: number } = {};
   activities.forEach((act) => {
-    if (act.targetDepartment) {
+    if (act.targetDepartments && act.targetDepartments.length > 0) {
+      act.targetDepartments.forEach((d) => {
+        departmentCounts[d] = (departmentCounts[d] || 0) + 1;
+      });
+    } else if (act.targetDepartment) {
       departmentCounts[act.targetDepartment] = (departmentCounts[act.targetDepartment] || 0) + 1;
     }
   });
@@ -403,10 +413,23 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
                       </td>
 
                       {/* Departemen (Kolom Pengelompokan Khusus) */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-50 text-amber-900 border border-amber-200">
-                          🏢 {act.targetDepartment || 'Umum'}
-                        </span>
+                      <td className="py-3.5 px-4">
+                        {act.targetDepartments && act.targetDepartments.length > 1 ? (
+                          <div className="flex flex-wrap gap-1 max-w-[220px]">
+                            {act.targetDepartments.map((d) => (
+                              <span
+                                key={d}
+                                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-950 border border-amber-300 whitespace-nowrap"
+                              >
+                                {d}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-50 text-amber-900 border border-amber-200 whitespace-nowrap">
+                            🏢 {act.targetDepartments?.[0] || act.targetDepartment || 'Umum'}
+                          </span>
+                        )}
                       </td>
 
                       {/* Items */}

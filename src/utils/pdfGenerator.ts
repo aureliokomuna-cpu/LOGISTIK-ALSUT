@@ -110,7 +110,10 @@ export function generateDailyLogisticsPDF(options: PDFReportOptions): jsPDF {
         ? `${act.fleetName || 'Armada'} (${act.fleetPlate || '-'})`
         : act.targetDepartment || 'Gudang Pusat';
 
-    const departmentName = act.targetDepartment || 'Umum';
+    const departmentName =
+      act.targetDepartments && act.targetDepartments.length > 0
+        ? act.targetDepartments.join(', ')
+        : (act.targetDepartment || 'Umum');
 
     const statusLabel =
       act.status === 'verified_by_ps'

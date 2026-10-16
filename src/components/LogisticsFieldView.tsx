@@ -68,7 +68,30 @@ export const LogisticsFieldView: React.FC<LogisticsFieldViewProps> = ({
 
   // Form Fields
   const [title, setTitle] = useState('');
-  const [targetDepartment, setTargetDepartment] = useState(DEPARTMENTS[0]);
+  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([DEPARTMENTS[0]]);
+
+  const handleToggleDepartment = (dept: string) => {
+    setSelectedDepartments((prev) => {
+      if (prev.includes(dept)) {
+        if (prev.length <= 1) return prev; // keep at least one department selected
+        return prev.filter((d) => d !== dept);
+      } else {
+        return [...prev, dept];
+      }
+    });
+  };
+
+  const handleSelectAllDepartments = () => {
+    if (selectedDepartments.length === DEPARTMENTS.length) {
+      setSelectedDepartments([DEPARTMENTS[0]]);
+    } else {
+      setSelectedDepartments([...DEPARTMENTS]);
+    }
+  };
+
+  const handleClearDepartments = () => {
+    setSelectedDepartments([DEPARTMENTS[0]]);
+  };
   const [recipientName, setRecipientName] = useState('');
   const [recipientPhone, setRecipientPhone] = useState('');
   const [recipientSignature, setRecipientSignature] = useState<string | undefined>(undefined);
@@ -114,10 +137,10 @@ export const LogisticsFieldView: React.FC<LogisticsFieldViewProps> = ({
   const [selectedDc, setSelectedDc] = useState<string>('JABABEKA');
   const [customDc, setCustomDc] = useState<string>('');
 
-  // Explicit Officer State for this task/activity (By Ketikan Langsung: Dikosongkan agar petugas isi sendiri tanpa ribet hapus)
-  const [taskOfficerName, setTaskOfficerName] = useState<string>('');
-  const [taskOfficerNip, setTaskOfficerNip] = useState<string>('');
-  const [taskOfficerId, setTaskOfficerId] = useState<string>('');
+  // Explicit Officer State for this task/activity (Tinggal pilih dari 18 daftar petugas, nama & NIP otomatis)
+  const [taskOfficerName, setTaskOfficerName] = useState<string>(activeOfficer?.name || '');
+  const [taskOfficerNip, setTaskOfficerNip] = useState<string>(activeOfficer?.badgeNumber || '');
+  const [taskOfficerId, setTaskOfficerId] = useState<string>(activeOfficer?.id || '');
 
   const handleStartTask = (type: ActivityType) => {
     setActiveType(type);
@@ -126,10 +149,11 @@ export const LogisticsFieldView: React.FC<LogisticsFieldViewProps> = ({
     setRecipientSignature(undefined);
     setNotes('');
     
-    // Nama logistik kosongkan saja agar mereka yang isi sendiri langsung tanpa hapus teks
-    setTaskOfficerName('');
-    setTaskOfficerNip('');
-    setTaskOfficerId('');
+    // Pilih otomatis petugas aktif dari 18 daftar petugas (tinggal pilih/ganti tanpa ketik manual)
+    const initialOff = activeOfficer || officers[0];
+    setTaskOfficerName(initialOff?.name || '');
+    setTaskOfficerNip(initialOff?.badgeNumber || '');
+    setTaskOfficerId(initialOff?.id || '');
     setSelectedDc('JABABEKA');
     setCustomDc('');
 
@@ -141,13 +165,13 @@ export const LogisticsFieldView: React.FC<LogisticsFieldViewProps> = ({
 
     if (type === 'barang_masuk') {
       setTitle('Penerimaan Barang Masuk');
-      setTargetDepartment(DEPARTMENTS[0]); // 'Sofa & Chair'
+      setSelectedDepartments([DEPARTMENTS[0]]); // 'Sofa & Chair' (Bisa tambah departemen lainnya)
     } else if (type === 'barang_keluar') {
       setTitle('Pengiriman Dispatch Customer');
-      setTargetDepartment(DEPARTMENTS[8]); // 'Dining'
+      setSelectedDepartments([DEPARTMENTS[8]]); // 'Dining'
     } else {
       setTitle('Serah Terima Internal Departemen');
-      setTargetDepartment(DEPARTMENTS[0]); // 'Sofa & Chair'
+      setSelectedDepartments([DEPARTMENTS[0]]); // 'Sofa & Chair'
     }
   };
 
@@ -220,7 +244,8 @@ export const LogisticsFieldView: React.FC<LogisticsFieldViewProps> = ({
       officerName: resolvedOfficerName, // MANDATORY: Nama Petugas Logistik (By Ketikan)
       officerBadge: resolvedNip,       // NIP Logistik (By Ketikan)
       dcOrigin: resolvedDc,
-      targetDepartment: targetDepartment || DEPARTMENTS[0],
+      targetDepartment: (selectedDepartments.length > 0 ? selectedDepartments : [DEPARTMENTS[0]]).join(', '),
+      targetDepartments: selectedDepartments.length > 0 ? selectedDepartments : [DEPARTMENTS[0]],
       recipientName: recipientName.trim() || undefined,
       recipientPhone: recipientPhone.trim() || undefined,
       recipientSignature,
@@ -252,14 +277,28 @@ export const LogisticsFieldView: React.FC<LogisticsFieldViewProps> = ({
       }
       return true; // Default 'all': Semua terhubung dalam satu sistem terpadu
     })
-    .filter((a) => (filterMyDept === 'all' ? true : a.targetDepartment === filterMyDept))
+    .filter((a) => {
+      if (filterMyDept === 'all') return true;
+      if (a.targetDepartments && a.targetDepartments.length > 0) {
+        return a.targetDepartments.includes(filterMyDept);
+      }
+      return a.targetDepartment === filterMyDept || a.targetDepartment?.includes(filterMyDept);
+    })
     .filter((a) => (filterDc === 'all' ? true : a.dcOrigin === filterDc));
 
-  const myActivities = recentActivities.filter(
-    (a) =>
-      a.officerName.toLowerCase() === activeOfficer.name.toLowerCase() ||
-      a.officerId === activeOfficer.id
-  );
+  const myActivities = recentActivities
+    .filter(
+      (a) =>
+        a.officerName.toLowerCase() === activeOfficer.name.toLowerCase() ||
+        a.officerId === activeOfficer.id
+    )
+    .filter((a) => {
+      if (filterMyDept === 'all') return true;
+      if (a.targetDepartments && a.targetDepartments.length > 0) {
+        return a.targetDepartments.includes(filterMyDept);
+      }
+      return a.targetDepartment === filterMyDept || a.targetDepartment?.includes(filterMyDept);
+    });
 
   return (
     <div className="max-w-5xl mx-auto px-2.5 sm:px-4 py-2 sm:py-5 space-y-2.5 sm:space-y-4">
@@ -493,69 +532,118 @@ export const LogisticsFieldView: React.FC<LogisticsFieldViewProps> = ({
             <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-2.5 sm:space-y-3.5">
               {currentStep === 1 ? (
                 <>
-                  {/* SEKSI PENGISIAN PETUGAS LOGISTIK (HANYA 2 KOLOM KETIKAN: NAMA & NIP, TANPA SHIFT, KOSONGKAN AWAL) */}
-                  <div className="bg-amber-50/80 border border-amber-300 rounded-xl p-2 sm:p-2.5 space-y-1.5">
+                  {/* SEKSI PENGISIAN PETUGAS LOGISTIK (PILIH DARI 18 DAFTAR PETUGAS: NAMA & NIP OTOMATIS) */}
+                  <div className="bg-amber-50/90 border border-amber-300 rounded-xl p-2.5 sm:p-3 space-y-2">
                     <div className="flex items-center justify-between">
                       <label className="text-[10px] sm:text-xs font-black text-slate-900 flex items-center gap-1.5 uppercase tracking-wide">
                         <User className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                        PENGISIAN PETUGAS LOGISTIK (KETIK NAMA & NIP):
+                        PILIH PETUGAS LOGISTIK (NIP & NAMA OTOMATIS):
                       </label>
-                      <span className="text-[9px] font-extrabold bg-amber-200 text-amber-900 px-1.5 py-0.2 rounded">
-                        2 Kolom Bersih
+                      <span className="text-[9px] font-extrabold bg-amber-200 text-amber-900 px-1.5 py-0.2 rounded font-mono">
+                        18 Petugas Tersedia
                       </span>
                     </div>
 
-                    {/* 2 Kolom Berdampingan (Nama & NIP - Hemat Tempat di Layar HP) */}
-                    <div className="grid grid-cols-2 gap-2">
-                      {/* Kolom 1: Nama Petugas (By Ketikan - Kosong Langsung Ketik) */}
+                    {/* Dropdown Pemilihan Petugas (Tinggal Pilih, Ga Usah Manual) */}
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-700 block mb-1">
+                        👉 Pilih Petugas Logistik (Tinggal Pilih Dari Daftar):
+                      </label>
+                      <select
+                        value={taskOfficerNip}
+                        onChange={(e) => {
+                          const nip = e.target.value;
+                          const found = officers.find((o) => o.badgeNumber === nip);
+                          if (found) {
+                            setTaskOfficerName(found.name);
+                            setTaskOfficerNip(found.badgeNumber);
+                            setTaskOfficerId(found.id);
+                            onSelectOfficer(found);
+                          } else {
+                            setTaskOfficerNip(nip);
+                          }
+                        }}
+                        className="w-full p-2.5 bg-white border-2 border-amber-400 rounded-lg text-xs sm:text-sm font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-sm"
+                      >
+                        <option value="">-- PILIH PETUGAS LOGISTIK (18 NAMA & NIP) --</option>
+                        {officers.map((off) => (
+                          <option key={off.id} value={off.badgeNumber}>
+                            {off.badgeNumber} : {off.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Quick Tap Chips 18 Petugas (1 Sentuhan Langsung Terpilih di HP) */}
+                    <div className="space-y-1">
+                      <span className="text-[9px] font-bold text-slate-500 block">
+                        ⚡ Atau Sentuh Cepat Nama Petugas (1-Klik):
+                      </span>
+                      <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto p-1.5 bg-white/80 rounded-lg border border-amber-200">
+                        {officers.map((off) => {
+                          const isSelected = taskOfficerNip === off.badgeNumber;
+                          return (
+                            <button
+                              key={off.id}
+                              type="button"
+                              onClick={() => {
+                                setTaskOfficerName(off.name);
+                                setTaskOfficerNip(off.badgeNumber);
+                                setTaskOfficerId(off.id);
+                                onSelectOfficer(off);
+                              }}
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all border flex items-center gap-1 ${
+                                isSelected
+                                  ? 'bg-amber-600 text-white border-amber-700 shadow-xs ring-1 ring-amber-300 scale-[1.02]'
+                                  : 'bg-white text-slate-700 border-slate-200 hover:bg-amber-100 hover:border-amber-300'
+                              }`}
+                            >
+                              <span className="font-mono text-[9px]">{off.badgeNumber}</span>
+                              <span>:</span>
+                              <span className="font-black">{off.name}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* 2 Kolom Hasil Pilihan (Nama & NIP) */}
+                    <div className="grid grid-cols-2 gap-2 pt-1 border-t border-amber-200/80">
+                      {/* Kolom 1: Nama Petugas */}
                       <div>
                         <label className="text-[10px] font-bold text-slate-700 block mb-0.5 truncate">
                           1. Nama Logistik:
                         </label>
                         <input
                           type="text"
-                          placeholder="Contoh: Budi Santoso / Agus..."
                           value={taskOfficerName}
                           onChange={(e) => setTaskOfficerName(e.target.value)}
-                          className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
+                          placeholder="Pilih nama di atas..."
+                          className="w-full p-2 bg-amber-50/60 border border-amber-300 rounded-lg text-xs font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
                         />
                       </div>
 
-                      {/* Kolom 2: NIP Petugas (By Ketikan - Kosong Langsung Ketik) */}
+                      {/* Kolom 2: NIP Petugas */}
                       <div>
                         <label className="text-[10px] font-bold text-slate-700 block mb-0.5 truncate">
                           2. NIP Logistik:
                         </label>
                         <input
                           type="text"
-                          placeholder="Contoh: LOG-001..."
                           value={taskOfficerNip}
                           onChange={(e) => setTaskOfficerNip(e.target.value)}
-                          className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs font-mono"
+                          placeholder="Pilih NIP di atas..."
+                          className="w-full p-2 bg-amber-50/60 border border-amber-300 rounded-lg text-xs font-black font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
                         />
                       </div>
                     </div>
 
-                    {/* Quick fill chip from profile (optional) & Stempel Tracking Preview */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pt-0.5">
-                      <div className="flex items-center gap-1 text-[9px] sm:text-[10px] font-semibold text-slate-800 bg-white/90 px-2 py-0.5 rounded border border-amber-200 truncate">
-                        <span className="shrink-0">📌 Stempel Berita Acara:</span>
-                        <strong className="text-amber-900 truncate">{taskOfficerName || '(Ketik nama Anda)'}</strong>
-                        <span className="font-mono text-slate-600 shrink-0">· NIP: {taskOfficerNip || '-'}</span>
-                      </div>
-
-                      {activeOfficer?.name && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setTaskOfficerName(activeOfficer.name);
-                            setTaskOfficerNip(activeOfficer.badgeNumber);
-                          }}
-                          className="text-[9px] text-amber-800 hover:text-amber-950 hover:underline font-bold self-start sm:self-auto"
-                        >
-                          ⚡ Isi cepat profil ({activeOfficer.name})
-                        </button>
-                      )}
+                    {/* Stempel Berita Acara Preview */}
+                    <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-semibold text-slate-800 bg-white/95 px-2.5 py-1 rounded-lg border border-amber-200">
+                      <span className="shrink-0 font-bold text-amber-800">📌 Stempel Berita Acara:</span>
+                      <strong className="text-slate-900 truncate">
+                        {taskOfficerName ? `${taskOfficerName} (NIP: ${taskOfficerNip})` : '⚠️ Silakan pilih petugas di atas'}
+                      </strong>
                     </div>
                   </div>
 
@@ -623,31 +711,53 @@ export const LogisticsFieldView: React.FC<LogisticsFieldViewProps> = ({
                     </div>
                   )}
 
-                  {/* SEKSI 2: BARANG DEPARTEMEN (PILIHAN LANGSUNG MUNCUL 17 DEPARTEMEN) */}
-                  <div className="p-2 sm:p-2.5 bg-amber-50/80 border border-amber-300 rounded-xl space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[10px] sm:text-xs font-black text-slate-900 flex items-center gap-1.5 uppercase">
-                        <Building2 className="w-3.5 h-3.5 text-amber-700" />
-                        BARANG DEPARTEMEN:
-                      </label>
-                      <span className="text-[9px] font-extrabold bg-amber-200 text-amber-900 px-1.5 py-0.2 rounded font-mono truncate max-w-[150px]">
-                        Terpilih: {targetDepartment}
-                      </span>
+                  {/* SEKSI 2: BARANG DEPARTEMEN (BISA PILIH LEBIH DARI 1 DEPARTEMEN / MULTI-SELECT) */}
+                  <div className="p-2 sm:p-2.5 bg-amber-50/90 border border-amber-300 rounded-xl space-y-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <label className="text-[10px] sm:text-xs font-black text-slate-900 flex items-center gap-1.5 uppercase">
+                          <Building2 className="w-3.5 h-3.5 text-amber-700" />
+                          BARANG DEPARTEMEN:
+                        </label>
+                        <span className="text-[9px] font-black bg-amber-300 text-slate-950 px-2 py-0.5 rounded-full font-mono border border-amber-400">
+                          {selectedDepartments.length} Dept Terpilih
+                        </span>
+                      </div>
+
+                      {/* Quick Multi-Select Action Buttons */}
+                      <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                        <button
+                          type="button"
+                          onClick={handleSelectAllDepartments}
+                          className="text-[9px] font-extrabold px-2 py-0.5 rounded bg-white hover:bg-amber-100 text-amber-950 border border-amber-300 transition-colors shadow-2xs"
+                        >
+                          {selectedDepartments.length === DEPARTMENTS.length ? 'Pilih 1 Saja' : '✓ Pilih Semua (17)'}
+                        </button>
+                        {selectedDepartments.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={handleClearDepartments}
+                            className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-200/70 hover:bg-amber-300 text-amber-900 transition-colors"
+                          >
+                            Reset ke 1
+                          </button>
+                        )}
+                      </div>
                     </div>
 
-                    <p className="text-[10px] text-slate-500 font-medium">
-                      Pilihan 17 departemen langsung muncul di bawah, sentuh salah satu kategori:
+                    <p className="text-[10px] text-slate-600 font-semibold">
+                      💡 <strong>Bisa pilih lebih dari satu departemen</strong> jika muatan barang campuran. Sentuh nama departemen di bawah untuk menambah atau membatalkan pilihan:
                     </p>
 
-                    {/* 17 Departemen Langsung Muncul di Layar */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-48 sm:max-h-56 overflow-y-auto pr-0.5">
+                    {/* 17 Departemen Langsung Muncul di Layar - Multi-Select Button Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-52 sm:max-h-60 overflow-y-auto pr-0.5">
                       {DEPARTMENTS.map((dept) => {
-                        const isSelected = targetDepartment === dept;
+                        const isSelected = selectedDepartments.includes(dept);
                         return (
                           <button
                             key={dept}
                             type="button"
-                            onClick={() => setTargetDepartment(dept)}
+                            onClick={() => handleToggleDepartment(dept)}
                             className={`p-1.5 sm:p-2 rounded-lg text-left text-[11px] sm:text-xs transition-all border flex items-center justify-between gap-1 ${
                               isSelected
                                 ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-xs ring-2 ring-amber-300 font-black'
@@ -656,13 +766,47 @@ export const LogisticsFieldView: React.FC<LogisticsFieldViewProps> = ({
                           >
                             <span className="truncate">{dept}</span>
                             {isSelected ? (
-                              <CheckCircle2 className="w-3.5 h-3.5 text-slate-950 shrink-0" />
+                              <span className="flex items-center gap-0.5 bg-slate-950 text-amber-300 rounded p-0.5 shrink-0">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                              </span>
                             ) : (
-                              <span className="w-1.5 h-1.5 rounded-full bg-slate-200 shrink-0" />
+                              <span className="w-3.5 h-3.5 rounded border border-slate-300 bg-slate-50 shrink-0" />
                             )}
                           </button>
                         );
                       })}
+                    </div>
+
+                    {/* Ringkasan Departemen Terpilih Aktif (Chips List) */}
+                    <div className="pt-1.5 border-t border-amber-200/80">
+                      <div className="flex items-start gap-1.5 text-[10px]">
+                        <span className="font-extrabold text-amber-950 shrink-0 mt-0.5">
+                          📋 Daftar Departemen Terpilih ({selectedDepartments.length}):
+                        </span>
+                        <div className="flex flex-wrap gap-1 flex-1">
+                          {selectedDepartments.map((dept) => (
+                            <span
+                              key={dept}
+                              className="inline-flex items-center gap-1 bg-amber-200 text-amber-950 font-black text-[9px] px-1.5 py-0.5 rounded-md border border-amber-300"
+                            >
+                              <span>{dept}</span>
+                              {selectedDepartments.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleDepartment(dept);
+                                  }}
+                                  title={`Hapus ${dept}`}
+                                  className="hover:bg-amber-300 rounded px-0.5 text-amber-900 font-black"
+                                >
+                                  ×
+                                </button>
+                              )}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -708,22 +852,91 @@ export const LogisticsFieldView: React.FC<LogisticsFieldViewProps> = ({
                         </div>
                       </div>
 
-                      {/* Fleet Selection */}
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-700 mb-0.5">
-                          Pilih Armada & Driver:
-                        </label>
-                        <select
-                          value={selectedFleetId}
-                          onChange={(e) => setSelectedFleetId(e.target.value)}
-                          className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-amber-500 focus:outline-none"
-                        >
-                          {fleets.map((flt) => (
-                            <option key={flt.id} value={flt.id}>
-                              🚚 {flt.name} ({flt.plateNumber}) - Driver: {flt.driverName}
-                            </option>
-                          ))}
-                        </select>
+                      {/* Fleet Selection - Pilihan Simple & Tambahan Kendaraan Pribadi Customer */}
+                      <div className="p-2 sm:p-2.5 bg-white border border-blue-200 rounded-xl space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] sm:text-xs font-black text-slate-900 flex items-center gap-1.5 uppercase">
+                            <Truck className="w-3.5 h-3.5 text-blue-700" />
+                            PILIH JENIS ARMADA PENGIRIMAN:
+                          </label>
+                          <span className="text-[9px] font-extrabold bg-blue-100 text-blue-900 px-1.5 py-0.2 rounded font-mono">
+                            Pilihan Simple
+                          </span>
+                        </div>
+
+                        {/* Grid Tombol Pilihan Armada Simple */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                          {fleets.map((flt) => {
+                            const isSelected = selectedFleetId === flt.id;
+                            const isPribadi = flt.id === 'flt-pribadi';
+                            const icon = isPribadi
+                              ? '🚗'
+                              : flt.type.includes('Motor')
+                              ? '🛵'
+                              : flt.type.includes('Double')
+                              ? '🚛'
+                              : flt.type.includes('Pickup')
+                              ? '🛻'
+                              : flt.type.includes('Ekspedisi')
+                              ? '📦'
+                              : '🚐';
+                            return (
+                              <button
+                                key={flt.id}
+                                type="button"
+                                onClick={() => setSelectedFleetId(flt.id)}
+                                className={`p-2 rounded-lg text-left transition-all border flex items-center gap-2 ${
+                                  isSelected
+                                    ? isPribadi
+                                      ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm ring-2 ring-emerald-300 font-black'
+                                      : 'bg-blue-600 text-white border-blue-700 shadow-sm ring-2 ring-blue-300 font-black'
+                                    : isPribadi
+                                    ? 'bg-emerald-50/70 text-emerald-950 border-emerald-300 hover:bg-emerald-100 font-bold'
+                                    : 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-blue-50 font-bold'
+                                }`}
+                              >
+                                <span className="text-base shrink-0">{icon}</span>
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-[11px] leading-tight truncate">{flt.name}</div>
+                                  <div
+                                    className={`text-[9px] truncate ${
+                                      isSelected ? 'text-white/80' : 'text-slate-500'
+                                    }`}
+                                  >
+                                    {flt.plateNumber}
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Keterangan Status Terpilih */}
+                        {selectedFleetId === 'flt-pribadi' ? (
+                          <div className="p-2 bg-emerald-50 border border-emerald-300 rounded-lg text-xs text-emerald-950 flex items-center gap-2">
+                            <span className="text-base">🚗</span>
+                            <div className="leading-tight">
+                              <strong className="block font-black text-emerald-900">
+                                Menggunakan Kendaraan Pribadi Customer
+                              </strong>
+                              <span className="text-[10px] text-emerald-700">
+                                Barang diambil / diangkut langsung oleh customer dengan kendaraan sendiri (Driver: Customer).
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between text-[10px] font-bold text-slate-700 bg-slate-50 px-2 py-1 rounded border border-slate-200">
+                            <span>
+                              🚚 Armada Terpilih:{' '}
+                              <strong className="text-blue-900">
+                                {fleets.find((f) => f.id === selectedFleetId)?.name || 'Armada Toko'}
+                              </strong>
+                            </span>
+                            <span className="font-mono text-slate-500">
+                              Plat: {fleets.find((f) => f.id === selectedFleetId)?.plateNumber}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -1060,7 +1273,7 @@ export const LogisticsFieldView: React.FC<LogisticsFieldViewProps> = ({
                       <div className="bg-slate-50 border border-slate-200 rounded-xl p-2 sm:p-2.5 flex flex-col justify-between col-span-2">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-[11px] sm:text-xs font-bold text-slate-800 truncate">
-                            3. Foto Bersama Tim Dept {targetDepartment}
+                            3. Foto Bersama Tim Dept {selectedDepartments.join(', ')}
                           </span>
                           {photos.departemenPhoto ? (
                             <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded-full">
@@ -1309,10 +1522,19 @@ export const LogisticsFieldView: React.FC<LogisticsFieldViewProps> = ({
                             DC: {act.dcOrigin}
                           </span>
                         )}
-                        {act.targetDepartment && (
-                          <span className="text-[9px] font-extrabold bg-amber-50 text-amber-800 border border-amber-200 px-1 py-0.2 rounded">
-                            {act.targetDepartment}
+                        {act.targetDepartments && act.targetDepartments.length > 1 ? (
+                          <span
+                            className="text-[9px] font-extrabold bg-amber-200 text-amber-950 border border-amber-300 px-1.5 py-0.2 rounded"
+                            title={act.targetDepartments.join(', ')}
+                          >
+                            🏢 {act.targetDepartments.length} Dept ({act.targetDepartments.slice(0, 2).join(', ')}{act.targetDepartments.length > 2 ? '...' : ''})
                           </span>
+                        ) : (
+                          (act.targetDepartments?.[0] || act.targetDepartment) && (
+                            <span className="text-[9px] font-extrabold bg-amber-50 text-amber-800 border border-amber-200 px-1 py-0.2 rounded">
+                              {act.targetDepartments?.[0] || act.targetDepartment}
+                            </span>
+                          )
                         )}
                       </div>
                       <p className="text-[11px] text-slate-500 truncate mt-0.5">

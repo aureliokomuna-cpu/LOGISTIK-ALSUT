@@ -163,7 +163,9 @@ export const DailyReportPreviewModal: React.FC<DailyReportPreviewModalProps> = (
                             : 'Serah Terima Dept'}
                         </td>
                         <td className="p-2 font-bold text-amber-900 bg-amber-50/50 border border-slate-200">
-                          {act.targetDepartment || 'Umum'}
+                          {act.targetDepartments && act.targetDepartments.length > 0
+                            ? act.targetDepartments.join(', ')
+                            : (act.targetDepartment || 'Umum')}
                         </td>
                         <td className="p-2 border border-slate-200">
                           {act.items.map((it) => `${it.name} (${it.qty} ${it.unit})`).join(', ')}

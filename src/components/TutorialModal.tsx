@@ -32,12 +32,12 @@ export const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose })
     {
       step: 1,
       badge: 'Langkah 1: Identitas',
-      title: 'Ketik Nama & NIP Petugas',
+      title: 'Pilih Nama & NIP Petugas (18 Petugas Terdaftar)',
       icon: '👷',
       color: 'amber',
       description:
-        'Cukup ketik Nama Petugas Logistik dan NIP pada 2 kolom yang tersedia. Tanpa perlu memilih shift.',
-      tips: 'Nama dan NIP akan otomatis dijadikan stempel digital resmi pada foto dan berita acara serah terima.',
+        'Cukup pilih nama Anda dari 18 daftar petugas logistik yang tersedia. Nama dan NIP otomatis terisi ke dalam sistem tanpa perlu ketik manual!',
+      tips: 'Tersedia tombol sentuh 1-klik untuk 18 petugas (Dadan, Elang, Sigit, Jamal, Hafid, Budi, Rian, Saipudin, Mahmud, Hermawan, Fariz, Rozi, Sulaiman, Faraz, Haerul, Asmoro, Anang, Handoko).',
     },
     {
       step: 2,
@@ -51,33 +51,33 @@ export const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose })
     },
     {
       step: 3,
-      badge: 'Langkah 3: Pengelompokan',
-      title: 'Pilih Barang Departemen (17 Kategori)',
+      badge: 'Langkah 3: Pengelompokan Departemen',
+      title: 'Pilih Departemen (Bisa Lebih dari 1 Departemen)',
       icon: '🏢',
       color: 'amber',
       description:
-        'Pilihan 17 departemen langsung terpampang di layar! Klik departemen yang dituju (misal: Sofa & Chair, Kitchen, Dining, dll).',
-      tips: 'Departemen yang Anda klik akan langsung menyala tebal dengan centang hijau.',
+        'Pilihan 17 departemen langsung terpampang di layar. Anda dapat memilih lebih dari satu departemen sekaligus jika muatan barang campuran (misal: Sofa & Chair + Dining + Bedding). Sentuh departemen untuk menambah / membatalkan.',
+      tips: 'Tersedia tombol "Pilih Semua (17)" dan daftar ringkasan departemen terpilih untuk kemudahan pengecekan bersama.',
     },
     {
       step: 4,
-      badge: 'Langkah 4: Rincian Barang',
-      title: 'Isi Jumlah & Nama Barang',
+      badge: 'Langkah 4: Rincian Barang & Armada',
+      title: 'Isi Barang & Pilih Jenis Armada',
       icon: '📦',
       color: 'emerald',
       description:
-        'Masukkan nama barang dan jumlah koli/unit. Anda juga dapat memilih label cepat seperti "Barang Lengkap" atau "Segel Utuh".',
-      tips: 'Dapat menambah beberapa jenis barang sekaligus dengan menekan tombol "+ Tambah Baris Barang".',
+        'Masukkan nama barang dan jumlah koli/unit. Untuk Barang Keluar, pilihan jenis armada sangat simpel dan praktis, termasuk opsi Kendaraan Pribadi Customer.',
+      tips: 'Tersedia pilihan cepat: Kendaraan Pribadi Customer, Blind Van, Truk Engkel, Double, Pickup, hingga Kurir Motor.',
     },
     {
       step: 5,
-      badge: 'Langkah 5: Foto Bukti',
-      title: 'Ambil Foto Bukti dengan Kamera HP',
+      badge: 'Langkah 5: Foto & Google Drive',
+      title: 'Ambil Foto & Simpan Sesuai Tanggal di Drive',
       icon: '📸',
       color: 'purple',
       description:
-        'Tekan tombol kamera besar yang berkedip. Ambil foto serah terima, foto list barang, foto armada mobil, atau foto penerima.',
-      tips: 'Foto otomatis diberi watermark koordinat Alam Sutera, tanggal, jam, dan Nama Petugas Logistik!',
+        'Ambil foto bukti dengan kamera HP. Nama file foto otomatis diformat sesuai tanggal (YYYY-MM-DD_HHmmss) dan terhubung ke folder Google Drive monitoring.',
+      tips: 'Foto otomatis diberi watermark GPS Alam Sutera dan nama petugas, siap disimpan langsung ke Google Drive.',
     },
     {
       step: 6,

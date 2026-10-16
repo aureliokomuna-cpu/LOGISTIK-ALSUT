@@ -32,7 +32,11 @@ export default function App() {
     const saved = localStorage.getItem('alsut_active_officer');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        const match = INITIAL_OFFICERS.find(
+          (o) => o.badgeNumber === parsed.badgeNumber || o.name?.toLowerCase() === parsed.name?.toLowerCase()
+        );
+        if (match) return match;
       } catch (e) {
         // fallback
       }

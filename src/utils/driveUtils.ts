@@ -47,6 +47,7 @@ export function generateDriveFileName(params: {
   type?: string;
   dcOrigin?: string;
   targetDepartment?: string;
+  targetDepartments?: string[];
   officerName?: string;
   photoKey: keyof ActivityPhotos | string;
   customLabel?: string;
@@ -60,8 +61,15 @@ export function generateDriveFileName(params: {
   else if (params.type === 'serah_terima_departemen') typeCode = 'DEPT';
 
   // DC or Department location code
+  const primaryDept =
+    params.targetDepartments && params.targetDepartments.length > 0
+      ? (params.targetDepartments.length > 1
+          ? `MULTI_${params.targetDepartments[0]}`
+          : params.targetDepartments[0])
+      : params.targetDepartment;
+
   const locPart = sanitizeFileNamePart(
-    params.dcOrigin || params.targetDepartment,
+    params.dcOrigin || primaryDept,
     'ALSUT'
   ).toUpperCase();
 

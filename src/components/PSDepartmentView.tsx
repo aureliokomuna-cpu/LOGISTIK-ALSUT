@@ -47,7 +47,11 @@ export const PSDepartmentView: React.FC<PSDepartmentViewProps> = ({
   // Filter activities that belong to department handover or incoming goods
   const deptActivities = activities.filter((act) => {
     if (act.type === 'barang_keluar') return false;
-    if (selectedDept !== 'all' && act.targetDepartment !== selectedDept) return false;
+    if (selectedDept !== 'all') {
+      const matchArray = act.targetDepartments && act.targetDepartments.includes(selectedDept);
+      const matchStr = act.targetDepartment === selectedDept || act.targetDepartment?.includes(selectedDept);
+      if (!matchArray && !matchStr) return false;
+    }
     return true;
   });
 
@@ -71,7 +75,10 @@ export const PSDepartmentView: React.FC<PSDepartmentViewProps> = ({
 
     const verificationData: PSVerification = {
       verifiedBy: verifierName || 'Tim PS Departemen',
-      department: verifyingActivity.targetDepartment || 'Departemen Terkait',
+      department:
+        verifyingActivity.targetDepartments && verifyingActivity.targetDepartments.length > 0
+          ? verifyingActivity.targetDepartments.join(', ')
+          : (verifyingActivity.targetDepartment || 'Departemen Terkait'),
       verifiedAt: new Date().toISOString(),
       result: checkResult,
       notes: verificationNotes,
@@ -207,10 +214,23 @@ export const PSDepartmentView: React.FC<PSDepartmentViewProps> = ({
                   <div>
                     {/* Top Status */}
                     <div className="flex items-center justify-between gap-2 mb-3">
-                      <span className="text-[11px] font-bold bg-amber-100 text-amber-800 px-2.5 py-1 rounded-lg">
-                        {act.targetDepartment || 'Departemen'}
-                      </span>
-                      <span className="text-xs font-mono font-semibold text-slate-500">
+                      {act.targetDepartments && act.targetDepartments.length > 1 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {act.targetDepartments.map((d) => (
+                            <span
+                              key={d}
+                              className="text-[10px] font-black bg-amber-200 text-amber-950 px-2 py-0.5 rounded-md border border-amber-300"
+                            >
+                              {d}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-[11px] font-bold bg-amber-100 text-amber-800 px-2.5 py-1 rounded-lg">
+                          {act.targetDepartments?.[0] || act.targetDepartment || 'Departemen'}
+                        </span>
+                      )}
+                      <span className="text-xs font-mono font-semibold text-slate-500 shrink-0">
                         Jam: {timeFormatted}
                       </span>
                     </div>
@@ -322,8 +342,10 @@ export const PSDepartmentView: React.FC<PSDepartmentViewProps> = ({
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-xs text-slate-900">{act.title}</span>
-                  <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono">
-                    {act.targetDepartment}
+                  <span className="text-[10px] bg-amber-50 text-amber-900 border border-amber-200 px-1.5 py-0.5 rounded font-mono font-bold">
+                    {act.targetDepartments && act.targetDepartments.length > 1
+                      ? `${act.targetDepartments.length} Dept: ${act.targetDepartments.join(', ')}`
+                      : (act.targetDepartments?.[0] || act.targetDepartment)}
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">

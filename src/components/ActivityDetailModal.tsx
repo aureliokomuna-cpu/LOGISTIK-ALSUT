@@ -116,15 +116,36 @@ export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
               </div>
             )}
 
-            {activity.targetDepartment && (
+            {(activity.targetDepartments?.length || activity.targetDepartment) && (
               <div className="p-3.5 bg-amber-50/70 rounded-2xl border border-amber-200">
-                <span className="text-[10px] font-black text-amber-800 uppercase block mb-1">
-                  Departemen / Kategori Produk:
-                </span>
-                <span className="text-sm font-black text-slate-900 flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-amber-600" />
-                  {activity.targetDepartment}
-                </span>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-black text-amber-800 uppercase">
+                    Departemen / Kategori Produk:
+                  </span>
+                  {activity.targetDepartments && activity.targetDepartments.length > 1 && (
+                    <span className="text-[9px] font-black bg-amber-200 text-amber-950 px-1.5 py-0.2 rounded font-mono">
+                      {activity.targetDepartments.length} Departemen
+                    </span>
+                  )}
+                </div>
+                {activity.targetDepartments && activity.targetDepartments.length > 1 ? (
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {activity.targetDepartments.map((dept) => (
+                      <span
+                        key={dept}
+                        className="inline-flex items-center gap-1 bg-white border border-amber-300 text-amber-950 font-bold text-xs px-2 py-0.5 rounded-lg shadow-2xs"
+                      >
+                        <Building2 className="w-3 h-3 text-amber-600 shrink-0" />
+                        {dept}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-sm font-black text-slate-900 flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-amber-600" />
+                    {activity.targetDepartments?.[0] || activity.targetDepartment}
+                  </span>
+                )}
               </div>
             )}
 
